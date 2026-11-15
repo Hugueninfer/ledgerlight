@@ -8,6 +8,11 @@ api/.env
 api/.env.*
 !api/.env.example
 
+# web env files
+web/.env
+web/.env.*
+!web/.env.example
+
 # dependencies and build output
 api/vendor
 api/node_modules

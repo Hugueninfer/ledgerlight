@@ -20,7 +20,7 @@
 - Money in integer cents; tenant-owned tables always carry `tenant_id` (applies from Task 8 on).
 - API errors always use the JSON contract `{ "message": string, "code": string, "request_id": string }` (+ `errors` on 422), regardless of the request's `Accept` header.
 - Request ids look like `req_` + 8 alphanumeric chars (e.g. `req_4Fh9Kp21`) and are echoed in the `X-Request-Id` header.
-- Dev URL: `http://localhost:8080`. Total hosting cost: $0.
+- Dev URL: `http://localhost:8088`. Total hosting cost: $0.
 
 ## Review Focus
 
@@ -215,17 +215,17 @@ it('replaces a malformed incoming request id', function () {
 - Create: `web/app/composables/useApiHealth.ts`
 - Create: `docker/web/Dockerfile` (node:22-alpine, corepack pnpm; `dev` target runs `nuxt dev --host`, `prod` target runs `.output/server/index.mjs`)
 - Create: `docker/caddy/Caddyfile` (site address from `{$APP_ADDRESS::8080}`; `handle /api/* /sanctum/* /up` → `api:8000`; everything else → `web:3000`)
-- Modify: `compose.yaml` (add `web`, `caddy`; only `caddy` publishes a port: `8080:8080`)
+- Modify: `compose.yaml` (add `web`, `caddy`; only `caddy` publishes a port: `8088:8080` (host port, overridable via `LEDGERLIGHT_HTTP_PORT`))
 - Test: `web/tests/unit/useApiHealth.test.ts`
 
 **Interfaces:**
 - Consumes: `GET /api/health` (Task 3).
-- Produces: `useApiHealth(): { status: Ref<'ok' | 'fail' | 'unknown'> }`. Single origin `http://localhost:8080` for both apps. Nuxt runtime config key `apiInternalBase` (`http://api:8000`) for server-side fetches.
+- Produces: `useApiHealth(): { status: Ref<'ok' | 'fail' | 'unknown'> }`. Single origin `http://localhost:8088` for both apps. Nuxt runtime config key `apiInternalBase` (`http://api:8000`) for server-side fetches.
 
 - [ ] **Step 1: Write the failing test** — `useApiHealth` maps a 200 `{status:'ok'}` to `'ok'`, a 503 to `'fail'`, and a network error to `'unknown'` (mock `$fetch` with `registerEndpoint`/`vi.stubGlobal`).
 - [ ] **Step 2: Run** `pnpm --dir web vitest run` → FAIL.
 - [ ] **Step 3: Implement** the composable and page; Dockerfile; Caddyfile; compose services.
-- [ ] **Step 4: Verify** `pnpm --dir web vitest run` → PASS; `make up`; `curl -s localhost:8080/api/health` → `{"status":"ok",…}`; `curl -s localhost:8080/ | grep -o Ledgerlight` → `Ledgerlight`; HMR works when editing `index.vue`.
+- [ ] **Step 4: Verify** `pnpm --dir web vitest run` → PASS; `make up`; `curl -s localhost:8088/api/health` → `{"status":"ok",…}`; `curl -s localhost:8088/ | grep -o Ledgerlight` → `Ledgerlight`; HMR works when editing `index.vue`.
 - [ ] **Step 5: Commit**: `build(web): scaffold nuxt 4 with tailwind 4`, `feat(web): show api health on placeholder page`, `build: add caddy edge serving web and api on one origin`.
 
 ### Task 5: Static analysis and formatting
@@ -383,7 +383,7 @@ it('orders roles uploader < reviewer < admin', function () {
 - Create: `api/app/Http/Middleware/SetCurrentTenant.php`
 - Create: `api/app/Http/Resources/MeResource.php`
 - Modify: `api/bootstrap/app.php` (`statefulApi()`; register `SetCurrentTenant` in the `api` group and **prepend it to the middleware priority list before `SubstituteBindings`**), `api/routes/api.php`
-- Modify: `api/.env.example` (`SANCTUM_STATEFUL_DOMAINS=localhost:8080`, `SESSION_DOMAIN=localhost`)
+- Modify: `api/.env.example` (`SANCTUM_STATEFUL_DOMAINS=localhost:8088`, `SESSION_DOMAIN=localhost`)
 - Test: `api/tests/Feature/Auth/DemoSessionTest.php`, `api/tests/Feature/Auth/MeTest.php`
 
 **Interfaces:**
@@ -431,7 +431,7 @@ it('signs out', function () {
 (`member_count` counts users, not pending invitations → 5.)
 - [ ] **Step 2: Run** → FAIL.
 - [ ] **Step 3: Implement** per Interfaces. `SetCurrentTenant` sets `CurrentTenant` from `$request->user()->tenant` when authenticated.
-- [ ] **Step 4: Run** `make test-api` → PASS. Manual check through Caddy: `curl -c j -b j localhost:8080/sanctum/csrf-cookie`, then POST with the `X-XSRF-TOKEN` header → 201.
+- [ ] **Step 4: Run** `make test-api` → PASS. Manual check through Caddy: `curl -c j -b j localhost:8088/sanctum/csrf-cookie`, then POST with the `X-XSRF-TOKEN` header → 201.
 - [ ] **Step 5: Commit**: `feat(api): add demo tenants seeder`, `feat(api): add demo persona sessions with sanctum`, `feat(api): add me endpoint`.
 
 ### Task 10: Team endpoints, role gate, and the route isolation harness

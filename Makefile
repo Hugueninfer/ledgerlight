@@ -1,4 +1,15 @@
-.PHONY: up down sh test test-api lint fmt migrate
+.PHONY: setup up down sh test test-api lint fmt migrate
+
+# Fresh clone: env file, images, dependencies (api + web), app key, migrations.
+setup:
+	test -f api/.env || cp api/.env.example api/.env
+	docker compose build
+	docker compose run --rm --no-deps api composer install
+	grep -q '^APP_KEY=.\+' api/.env || docker compose run --rm --no-deps api php artisan key:generate
+	docker compose run --rm --no-deps web pnpm install --frozen-lockfile
+	pnpm --dir web install --frozen-lockfile
+	docker compose up -d --wait mysql redis
+	docker compose run --rm api php artisan migrate --force
 
 up:
 	docker compose up -d --build --wait

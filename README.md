@@ -12,5 +12,9 @@
 ## Getting started
 
 ```bash
-bash scripts/setup.sh
+bash scripts/setup.sh   # enable git hooks
+make setup              # env file, images, dependencies, app key, migrations
+make up                 # start the stack
 ```
+
+The app is served on <http://localhost:8088> (set `LEDGERLIGHT_HTTP_PORT` to change the port). Caddy routes `/api/*` and `/sanctum/*` to the Laravel API and everything else to the Nuxt app, so both share one origin.

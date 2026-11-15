@@ -39,7 +39,7 @@ There is no PHP or Composer on the host. Run every PHP command in the `api` cont
 - Money in integer cents. Tenant-owned tables always carry `tenant_id`.
 - API errors always use the JSON contract `{ "message": string, "code": string, "request_id": string }` (plus `errors` on 422), regardless of the request's `Accept` header.
 - Request ids look like `req_` + 8 alphanumeric chars (e.g. `req_4Fh9Kp21`) and are echoed in the `X-Request-Id` header.
-- Dev URL: `http://localhost:8080`. Total hosting cost: $0.
+- Dev URL: `http://localhost:8088`. Total hosting cost: $0.
 
 ## How we work
 
