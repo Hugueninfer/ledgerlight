@@ -8,5 +8,5 @@ paths: ["api/tests/**", "web/tests/**", "web/**/*.test.ts", "tests/**"]
 - **Groq and Tallyline are always faked**, in every test, including end-to-end of the pipeline. Fixtures for model output live next to the tests and mirror real response shapes, including malformed and low-confidence outputs.
 - Tests do not depend on wall-clock time, randomness or the network: freeze time, seed randomness, fake queues and storage.
 - A bug fix starts with a test that reproduces it.
-- The tenancy isolation suite (introduced in stage 2) must keep iterating every API route as a user of tenant B against tenant A resources.
+- The route isolation harness (`api/tests/Feature/Tenancy/RouteIsolationTest.php`) must keep iterating every parameterised API route as a user of tenant B against tenant A resources. Register a factory there for every new route parameter.
 - Shell hook tests (`tests/hooks/`) print `SKIP` when a precondition cannot hold yet, never a silent pass.
