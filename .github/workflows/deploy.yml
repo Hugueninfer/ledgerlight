@@ -1,0 +1,47 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  API_IMAGE: ghcr.io/hugueninfer/ledgerlight-api
+  WEB_IMAGE: ghcr.io/hugueninfer/ledgerlight-web
+
+jobs:
+  build:
+    # Only for a CI run that succeeded on main (or a manual dispatch).
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    # Native arm64 runner: proves the images build for the Oracle Ampere VM.
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      packages: write
+    # Secrets are not available in `if:` expressions, so the secret is mapped into an
+    # env var and tested in a step; the deploy job reads the result from these outputs.
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+    outputs:
+      sha: ${{ steps.vars.outputs.sha }}
+      deploy:
+    needs: build
+    # Skipped (not failed) until the DEPLOY_HOST secret exists.
+    if: needs.build.outputs.deploy == 'true'
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script_stop: true
+          script: TAG=${{ needs.build.outputs.sha }} /opt/ledgerlight/scripts/deploy.sh
