@@ -36,6 +36,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias(['role' => RequireRole::class]);
         $middleware->prependToPriorityList(before: SubstituteBindings::class, prepend: RequireRole::class);
 
+        // There are no web login routes: without this, Authenticate calls route('login') for a
+        // signed-out request that does not send Accept: application/json and that 500s.
+        // Returning null lets the AuthenticationException render as the 401 error contract.
+        $middleware->redirectGuestsTo(fn () => null);
+
         // Caddy is the only thing that reaches this app (port 8000 is not published), so every
         // forwarded header can be trusted: real client IP, scheme, host and port.
         $middleware->trustProxies(at: '*', headers: Request::HEADER_X_FORWARDED_FOR
@@ -44,7 +49,7 @@ return Application::configure(basePath: dirname(__DIR__))
             | Request::HEADER_X_FORWARDED_PROTO);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $isApi = fn (Request $request): bool => $request->is('api/*') || $request->expectsJson();
+        $isApi = fn (Request $request): bool => $request->is('api/*', 'sanctum/*') || $request->expectsJson();
 
         $exceptions->shouldRenderJsonWhen($isApi);
 

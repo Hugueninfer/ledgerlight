@@ -113,3 +113,17 @@ it('keeps an ApiException message on a 5xx outside debug mode', function () {
         ->assertJsonPath('code', 'service_unavailable')
         ->assertJsonPath('message', 'Tallyline is down, retrying soon.');
 });
+
+it('answers a signed-out request to a protected route with 401 even without accept header', function (string $uri) {
+    $this->get($uri)
+        ->assertUnauthorized()
+        ->assertJsonPath('code', 'unauthenticated')
+        ->assertJsonStructure(['message', 'code', 'request_id']);
+})->with(['/api/me', '/api/team/members/1']);
+
+it('renders unknown sanctum paths as the json error contract', function () {
+    $this->get('/sanctum/nope')
+        ->assertNotFound()
+        ->assertJsonPath('code', 'not_found')
+        ->assertJsonStructure(['message', 'code', 'request_id']);
+});
