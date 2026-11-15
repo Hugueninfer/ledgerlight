@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # PreToolUse(Bash): block commands that bypass the repo's git safety rails.
 # Reads the hook JSON on stdin; exit 2 blocks the call and feeds stderr back to the agent.
+command -v jq >/dev/null 2>&1 || { echo "Blocked: jq is required for the guard hooks (install jq)." >&2; exit 2; }
 cmd="$(jq -r '.tool_input.command // empty' 2>/dev/null)"
 [ -z "$cmd" ] && exit 0
 

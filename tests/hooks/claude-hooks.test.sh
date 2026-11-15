@@ -23,6 +23,20 @@ expect_allow bash '{"tool_input":{"command":"ls -la"}}'
 expect_allow bash '{}'
 expect_allow bash ''
 
+# both guards fail closed (exit 2 + reason) when jq is missing, instead of silently allowing
+J="$_TMP/nojq"
+mkdir -p "$J"
+for t in bash dirname basename cat grep sed git; do ln -sf "$(command -v "$t")" "$J/$t"; done
+for g in bash files; do
+  printf '{"tool_input":{"command":"ls","file_path":"/tmp/x"}}' | PATH="$J" "$(command -v bash)" "$(_hook_script "$g")" > /dev/null 2> "$_TMP/stderr"
+  code=$?
+  if [ "$code" -eq 2 ] && grep -q 'jq is required for the guard hooks' "$_TMP/stderr"; then
+    pass "guard-$g fails closed without jq"
+  else
+    fail "guard-$g should exit 2 naming jq when jq is missing, got $code"
+  fi
+done
+
 # guard-files: blocks
 expect_block files '{"tool_input":{"file_path":"'"$ROOT"'/api/.env"}}'
 expect_block files '{"tool_input":{"file_path":"'"$ROOT"'/.env.production"}}'

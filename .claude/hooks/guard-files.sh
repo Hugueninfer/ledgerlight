@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # PreToolUse(Edit|Write|MultiEdit): protect secrets and merged migrations.
 # Reads the hook JSON on stdin; exit 2 blocks the call and feeds stderr back to the agent.
+command -v jq >/dev/null 2>&1 || { echo "Blocked: jq is required for the guard hooks (install jq)." >&2; exit 2; }
 path="$(jq -r '.tool_input.file_path // empty' 2>/dev/null)"
 [ -z "$path" ] && exit 0
 
