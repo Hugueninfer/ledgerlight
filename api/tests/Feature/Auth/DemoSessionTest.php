@@ -83,5 +83,6 @@ it('refuses a non-stateful client with the error contract instead of a 500', fun
         ->postJson('/api/demo/sessions', ['persona' => 'acme-admin'])
         ->assertStatus(400)
         ->assertJsonPath('code', 'bad_request')
+        ->assertJsonPath('message', 'Demo sign-in needs a browser session: request /sanctum/csrf-cookie from the app first.')
         ->assertJsonStructure(['message', 'code', 'request_id']);
 });

@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\ApiException;
 use App\Http\Resources\MeResource;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Support\ErrorCode;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -16,7 +18,13 @@ class DemoSessionController extends Controller
     public function store(Request $request): JsonResponse
     {
         // Cookie sessions only: a client that is not a stateful SPA origin has no session store.
-        abort_unless($request->hasSession(), 400);
+        if (! $request->hasSession()) {
+            throw new ApiException(
+                400,
+                ErrorCode::BadRequest,
+                'Demo sign-in needs a browser session: request /sanctum/csrf-cookie from the app first.',
+            );
+        }
 
         // Rule::in, not a database rule: those bypass Eloquent scopes.
         $data = $request->validate([
