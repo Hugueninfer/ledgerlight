@@ -15,6 +15,7 @@ permissions:
 jobs:
   api:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: api
@@ -80,6 +81,7 @@ jobs:
 
   web:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: web
@@ -100,11 +102,28 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm vitest run
+      - run: pnpm build
 
   hooks:
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - run: bash tests/hooks/commit-msg.test.sh && bash tests/hooks/claude-hooks.test.sh
+
+  # The server-side twin of .githooks/commit-msg: git revert, --no-verify and web edits skip the
+  # local hook. Lints the pushed range (push) or the PR's commits (pull_request).
+  commit-lint:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Lint commit messages
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: bash scripts/lint-commits.sh "$BASE" "$HEAD"
