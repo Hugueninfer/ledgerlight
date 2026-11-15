@@ -3,6 +3,8 @@
 # Fresh clone: env file, images, dependencies (api + web), app key, migrations.
 setup:
 	test -f api/.env || cp api/.env.example api/.env
+	# Create the web mountpoints as the host user: otherwise Docker creates them as root when the volumes mount over ./web.
+	mkdir -p web/node_modules web/.nuxt
 	docker compose build
 	docker compose run --rm --no-deps api composer install
 	grep -q '^APP_KEY=.\+' api/.env || docker compose run --rm --no-deps api php artisan key:generate
