@@ -7,6 +7,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: deploy
   cancel-in-progress: false
@@ -18,8 +21,16 @@ env:
 
 jobs:
   build:
-    # Only for a CI run that succeeded on main (or a manual dispatch).
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    # Only for a push to main in this repo whose CI succeeded. workflow_run also fires for fork
+    # pull requests (branches matches the PR's head branch name), so check event, repo and branch.
+    # Manual runs are limited to main.
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository &&
+       github.event.workflow_run.head_branch == 'main')
     # Native arm64 runner: proves the images build for the Oracle Ampere VM.
     runs-on: ubuntu-24.04-arm
     permissions:
@@ -84,12 +95,14 @@ jobs:
     # Skipped (not failed) until the DEPLOY_HOST secret exists.
     if: needs.build.outputs.deploy == 'true'
     runs-on: ubuntu-24.04
+    permissions: {}
     steps:
       - name: Deploy over SSH
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
+          fingerprint: ${{ secrets.DEPLOY_HOST_FINGERPRINT }}
           script_stop: true
           script: TAG=${{ needs.build.outputs.sha }} /opt/ledgerlight/scripts/deploy.sh

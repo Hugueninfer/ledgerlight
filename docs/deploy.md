@@ -104,7 +104,7 @@ docker pull ghcr.io/hugueninfer/ledgerlight-api:latest
 docker pull ghcr.io/hugueninfer/ledgerlight-web:latest
 ```
 
-## 6. Add the three repository secrets
+## 6. Add the four repository secrets
 
 Create a dedicated deploy key on your own machine (not on the VM):
 
@@ -120,6 +120,13 @@ GitHub -> repository -> Settings -> Secrets and variables -> Actions -> New repo
 | `DEPLOY_HOST` | `<host>` (the DuckDNS name or the public IP) |
 | `DEPLOY_USER` | `ubuntu` |
 | `DEPLOY_SSH_KEY` | the full contents of `ledgerlight-deploy` (the private key, including the BEGIN/END lines) |
+| `DEPLOY_HOST_FINGERPRINT` | the VM's SSH host key fingerprint (`SHA256:...`), so the workflow refuses a spoofed host; get it with the command below |
+
+Get the host key fingerprint (run it on your machine, then confirm it against `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub` on the VM):
+
+```bash
+ssh-keyscan -t ed25519 <host> 2>/dev/null | ssh-keygen -lf - | awk '{print $2}'   # SHA256:...
+```
 
 Then delete the local private key file. Until `DEPLOY_HOST` exists, the `deploy` job is skipped (shown as skipped, not failed), so the build keeps working without a VM.
 
