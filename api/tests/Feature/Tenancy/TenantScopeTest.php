@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Invitation;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Tenancy\CurrentTenant;
@@ -12,6 +13,12 @@ it('only returns rows of the current tenant', function () {
     User::factory()->for($globex)->create();
     app(CurrentTenant::class)->set($globex);
     expect(User::count())->toBe(1);
+});
+
+it('fills tenant_id from the current tenant on create', function () {
+    $acme = Tenant::factory()->create();
+    app(CurrentTenant::class)->run($acme, fn () => Invitation::factory()->create(['tenant_id' => null]));
+    expect(Invitation::withoutGlobalScopes()->first()->tenant_id)->toBe($acme->id);
 });
 
 it('refuses to create a tenant-owned row without a tenant', function () {

@@ -21,6 +21,9 @@ return new class extends Migration
             // tenant_id leads this index, so it also serves the tenant_id foreign key.
             $table->dropUnique(['email']);
             $table->unique(['tenant_id', 'email']);
+
+            // Target of composite foreign keys from other tenant-owned tables.
+            $table->tenantKey();
         });
     }
 
@@ -28,6 +31,7 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->dropForeign(['tenant_id']);
+            $table->dropUnique(['tenant_id', 'id']);
             $table->dropUnique(['tenant_id', 'email']);
             $table->dropColumn(['tenant_id', 'role']);
             $table->unique('email');
