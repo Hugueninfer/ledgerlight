@@ -29,6 +29,8 @@ main() {
   [ "${SKIP_PULL:-0}" = 1 ] || dc pull api web
   dc up -d --wait --remove-orphans
   dc exec -T api php artisan migrate --force
+  # Demo tenants and personas (idempotent) until sandbox sessions replace them.
+  dc exec -T api php artisan db:seed --class=DemoTenantsSeeder --force
   dc exec -T api php artisan optimize
 
   # Health check through the public edge (retries cover certificate issuance on first deploy).
@@ -38,7 +40,8 @@ main() {
   for attempt in $(seq 1 15); do
     if body="$(curl "${CURL_OPTS[@]}" "$HEALTH_URL")"; then
       echo "$body"
-      docker image prune -f >/dev/null
+      # Housekeeping must never fail a healthy deploy: drop dangling images and SHA-tagged ones older than a week.
+      docker image prune -af --filter "until=168h" >/dev/null || true
       echo "Deploy of $TAG OK"
       exit 0
     fi
