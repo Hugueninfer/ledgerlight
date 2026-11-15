@@ -8,7 +8,9 @@ How Ledgerlight is built with a coding agent, and how the agent is kept honest. 
 2. **Rules.** `CLAUDE.md` holds the constraints that always apply; `.claude/rules/*.md` add path-scoped rules (backend, frontend, testing) that load only when relevant files are touched.
 3. **Test first.** The agent writes a failing test, shows it failing, then implements.
 4. **Hooks.** Deterministic guards run outside the model: they block `--no-verify`, force pushes, AI trailers, edits to `.env*` and to migrations already on `origin/main`, and format edited files (once `api/` and `web/` exist).
-5. **Review.** Every diff is read by the owner before a stage is tagged. Stages close with an Outcome section in the spec and a `stage-NN` tag.
+5. **Task by task.** Each plan task is implemented by an agent working from a written brief. A separate reviewer agent then checks the result for spec compliance and quality, and the fixes loop until the review is clean. Decisions the controller makes along the way (for example, scoping a finding to a later stage) are recorded in a ledger so they are not relitigated.
+6. **Whole-plan review.** When all tasks of a plan are done, the most capable model reviews the whole diff. Its findings are fixed in one wave before the stage is closed.
+7. **Owner decisions.** The owner decides in chat anything that changes direction (for example, committing straight to `main` instead of opening PRs). Stages close with an Outcome section in the spec and a `stage-NN` tag.
 
 ## Guards at a glance
 
@@ -19,11 +21,11 @@ How Ledgerlight is built with a coding agent, and how the agent is kept honest. 
 | Claude Code | `.claude/hooks/guard-files.sh` | no `.env*` edits, merged migrations immutable |
 | Claude Code | `.claude/hooks/format-file.sh` | Pint / ESLint after edits (best effort) |
 
-All hooks are covered by shell tests in `tests/hooks/`. The formatter branches are tested with `docker`/`pnpm` shims, not against real Pint or ESLint, which arrive in stage 1.
+The two guard hooks fail closed (exit 2) when `jq` is missing, rather than silently allowing everything. All hooks are covered by shell tests in `tests/hooks/`. The formatter branches are tested with `docker`/`pnpm` shims, not against real Pint or ESLint, which arrive in stage 1.
 
 ## Corrections log
 
-Every time the owner overrides or fixes what the agent did, add a row. The pattern of corrections is what drives new rules.
+Where the owner or a reviewer corrected what the agent did, the per-stage record is the "How I steered the agent" list in the Outcome section of each stage spec (`docs/specs/01-infra.md`, `docs/specs/02-tenancy.md`). This table holds only the corrections that changed a rule or a hook. The pattern of corrections is what drives new rules.
 
 | Date | Stage | What the agent did | What I changed | Why |
 |---|---|---|---|---|

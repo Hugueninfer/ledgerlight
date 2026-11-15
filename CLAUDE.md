@@ -49,6 +49,6 @@ There is no PHP or Composer on the host. Run every PHP command in the `api` cont
 2. **TDD.** A failing test comes first; watch it fail for the right reason, then make it pass.
 3. **Small commits.** One logical change per commit, Conventional Commits, English.
 4. **Verify before claiming done.** Run the tests and read the output.
-5. **Record corrections.** When the owner overrides what the agent did, add a row to the corrections log in `docs/ai-workflow.md`.
+5. **Record corrections.** When the owner or a reviewer overrides what the agent did, list it under "How I steered the agent" in the stage's Outcome section. If the correction changes a rule or a hook, also add a row to the corrections log in `docs/ai-workflow.md`.
 
 Hooks enforce part of this: `--no-verify`, force pushes and AI trailers are blocked, `.env*` files (except `.env.example`) and migrations already on `origin/main` are read-only, and edited files are auto-formatted once `api/` and `web/` exist (stage 1). If a hook blocks you, fix the cause; do not look for a way around it.
