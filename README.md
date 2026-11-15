@@ -1,5 +1,7 @@
 # Ledgerlight
 
+[![CI](https://github.com/Hugueninfer/ledgerlight/actions/workflows/ci.yml/badge.svg)](https://github.com/Hugueninfer/ledgerlight/actions/workflows/ci.yml)
+
 **Ledgerlight — AI you can verify.** A multi-tenant accounts-payable SaaS: an LLM extracts vendor invoice fields along with a confidence score, humans review only the uncertain ones, and approved invoices are exported to a deliberately unreliable accounting API.
 
 **Status:** under construction.
