@@ -13,10 +13,12 @@
 
 ## Getting started
 
+Prerequisites: Docker with Compose v2.24+ and `make`. Node 22 and pnpm 9 are needed only to run the web lint and test targets on the host.
+
 ```bash
 bash scripts/setup.sh   # enable git hooks
-make setup              # env file, images, dependencies, app key, migrations
+make setup              # env file, images, dependencies, app key, migrations, demo data
 make up                 # start the stack
 ```
 
-The app is served on <http://localhost:8088> (set `LEDGERLIGHT_HTTP_PORT` to change the port). Caddy routes `/api/*` and `/sanctum/*` to the Laravel API and everything else to the Nuxt app, so both share one origin.
+The app is served on <http://localhost:8088> (set `LEDGERLIGHT_HTTP_PORT` to change the port, and update `APP_URL` and `SANCTUM_STATEFUL_DOMAINS` in `api/.env` to match). Caddy routes `/api/*` and `/sanctum/*` to the Laravel API and everything else to the Nuxt app, so both share one origin.

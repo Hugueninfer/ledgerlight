@@ -13,6 +13,8 @@ Replace `<host>` below with your DuckDNS name (for example `ledgerlight.duckdns.
 
 ## 1. Install Docker on Ubuntu 24.04 (aarch64)
 
+Do step 2b (open the ports and run `sudo netfilter-persistent save`) **before** installing Docker. Once Docker is running it adds its own chains and per-container rules to iptables, and a `save` taken after that would persist them; they are replayed at boot before Docker starts and can leave stale rules behind. Saving first keeps the persisted file to your own rules; Docker recreates its chains itself on every start.
+
 ```bash
 sudo apt-get update
 sudo apt-get install -y ca-certificates curl git
@@ -142,6 +144,10 @@ The first deploy also issues the TLS certificate; `deploy.sh` retries the health
 curl -s https://<host>/api/health        # {"status":"ok",...}
 curl -sI https://<host>/ | head -1       # HTTP/2 200
 ```
+
+`deploy.sh` runs `php artisan db:seed --class=DemoTenantsSeeder --force` after the migrations. The seeder is idempotent and creates the two demo tenants and their personas, which the login page needs. It stays until sandbox sessions replace the shared demo data.
+
+After a healthy check it also prunes images that are unused and older than a week (`docker image prune -af --filter "until=168h"`), which clears old SHA-tagged images; a failure there never fails the deploy.
 
 Manual deploy or rollback on the VM (any commit SHA that has images in GHCR):
 
