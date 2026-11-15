@@ -26,7 +26,7 @@ export function useApiHealth() {
       // The API answered but reported a failing dependency: 503 with status "fail".
       return (statusCode ?? httpStatus) === 503 || body?.status === 'fail' ? 'fail' : 'unknown'
     }
-  }, { default: () => 'unknown' })
+  }, { default: (): ApiHealthStatus => 'unknown' })
 
   const status = computed<ApiHealthStatus>(() => data.value ?? 'unknown')
 

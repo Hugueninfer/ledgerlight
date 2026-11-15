@@ -8,6 +8,7 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
+    "lint": "eslint .",
     "test": "vitest run",
     "typecheck": "nuxt typecheck"
   },
@@ -23,7 +24,9 @@
     "@nuxt/test-utils": "^4.4.0",
     "@vue/test-utils": "^2.6.0",
     "happy-dom": "^21.0.4",
-    "vitest": "^5.1.0"
+    "typescript": "^6.0.3",
+    "vitest": "^5.1.0",
+    "vue-tsc": "^3.3.14"
   },
   "packageManager": "pnpm@9.15.9"
 }
