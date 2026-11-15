@@ -49,10 +49,20 @@ return Application::configure(basePath: dirname(__DIR__))
                 $body['errors'] = $e->errors();
             }
 
-            return new JsonResponse(
-                $body,
-                $status,
-                ['X-Request-Id' => $body['request_id']],
-            );
+            $json = new JsonResponse($body, $status);
+
+            // Keep headers from the original response (Allow, Retry-After, X-RateLimit-*, WWW-Authenticate...).
+            foreach ($response->headers->allPreserveCaseWithoutCookies() as $name => $values) {
+                if (in_array(strtolower($name), ['content-type', 'content-length', 'cache-control', 'date'], true)) {
+                    continue;
+                }
+                $json->headers->set($name, $values);
+            }
+            foreach ($response->headers->getCookies() as $cookie) {
+                $json->headers->setCookie($cookie);
+            }
+            $json->headers->set('X-Request-Id', $body['request_id']);
+
+            return $json;
         });
     })->create();

@@ -49,3 +49,33 @@ it('hides exception details on server errors outside debug mode', function () {
     $res->assertStatus(500)->assertJsonPath('code', 'server_error')->assertJsonPath('message', 'Something went wrong.');
     expect($res->getContent())->not->toContain('secret internals');
 });
+
+it('keeps the Allow header on 405 responses', function () {
+    $this->post('/api/health')
+        ->assertStatus(405)
+        ->assertHeader('Allow');
+});
+
+it('maps 429 to too_many_requests and keeps Retry-After', function () {
+    Route::get('/api/_probe/throttled', fn () => 'ok')->middleware('throttle:1,1');
+
+    $this->get('/api/_probe/throttled')->assertOk();
+    $this->get('/api/_probe/throttled')
+        ->assertStatus(429)
+        ->assertJsonPath('code', 'too_many_requests')
+        ->assertHeader('Retry-After');
+});
+
+it('maps 419 to csrf_mismatch', function () {
+    Route::get('/api/_probe/expired', fn () => abort(419));
+
+    $this->get('/api/_probe/expired')->assertStatus(419)->assertJsonPath('code', 'csrf_mismatch');
+});
+
+it('maps other client errors to bad_request and conflicts to conflict', function () {
+    Route::get('/api/_probe/bad', fn () => abort(400));
+    Route::get('/api/_probe/clash', fn () => abort(409));
+
+    $this->get('/api/_probe/bad')->assertStatus(400)->assertJsonPath('code', 'bad_request');
+    $this->get('/api/_probe/clash')->assertStatus(409)->assertJsonPath('code', 'conflict');
+});
