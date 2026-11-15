@@ -25,3 +25,31 @@ finish() {
   printf '\n%d passed, %d failed\n' "$PASSED" "$FAILED"
   [ "$FAILED" -eq 0 ]
 }
+
+skip() { printf 'SKIP: %s\n' "$1"; }
+
+# Claude Code hook helpers: feed JSON on stdin to .claude/hooks/guard-<name>.sh
+# (or format-file.sh for "format"); a block is exit code 2.
+_hook_script() {
+  case "$1" in
+    bash) printf '%s' "$ROOT/.claude/hooks/guard-bash.sh" ;;
+    files) printf '%s' "$ROOT/.claude/hooks/guard-files.sh" ;;
+    format) printf '%s' "$ROOT/.claude/hooks/format-file.sh" ;;
+  esac
+}
+
+_run_json_hook() {
+  printf '%s' "$2" | bash "$(_hook_script "$1")" > /dev/null 2> "$_TMP/stderr"
+}
+
+expect_block() {
+  _run_json_hook "$1" "$2"
+  local code=$?
+  if [ "$code" -eq 2 ] && [ -s "$_TMP/stderr" ]; then pass "$1 blocks: $2"; else fail "$1 should block (exit 2 + reason), got $code: $2"; fi
+}
+
+expect_allow() {
+  _run_json_hook "$1" "$2"
+  local code=$?
+  if [ "$code" -eq 0 ]; then pass "$1 allows: $2"; else fail "$1 should allow, got $code: $2"; fi
+}
