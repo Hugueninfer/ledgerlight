@@ -25,7 +25,7 @@ Two companies share one database and can never see or reference each other's dat
 
 **What.** Tenants and roles; a `BelongsToTenant` trait (global scope plus create/update guards) driven by a scoped `CurrentTenant`; composite `(tenant_id, x_id)` foreign keys via the `tenantKey()` / `tenantForeign()` macros; Acme and Globex demo tenants with password-less persona sign-in over Sanctum cookie sessions; `GET /api/me`; admin-only team endpoints behind a `role:<role>` gate that answers 403 with the user's and the required role; and a route isolation harness that calls every parameterised API route as a Globex admin against Acme resources.
 
-**Why.** Tenant isolation is the headline promise, so it is enforced twice (the application scope, and keys the database itself checks) and proven on every route, not just on the routes someone remembered to test.
+**Why.** Tenant isolation is the headline promise. Isolation is enforced by the scope, and cross-tenant references are rejected by the database itself. The harness tests it on every parameterised route, not just on the routes someone remembered to test; list routes rely on the scope plus their own feature tests (see Known follow-ups).
 
 **How I steered the agent.**
 - `tenant_id` could be set to another tenant explicitly on create, or changed on update; both now throw `TenantMismatchException`.
@@ -37,10 +37,17 @@ Two companies share one database and can never see or reference each other's dat
 - Demo sign-in from a non-browser client (no cookie session) returned 500; it is now a 400 with the error contract.
 - Logout's CSRF token regeneration is pinned by a test.
 - The error handler only renders fixed per-code messages, so the role gate's body could not carry its own message and fields; `ApiException` is now the single, explicit opt-in for that, tested directly.
+- Test helpers were global functions in test files (one Pest process, so a later file could hit "cannot redeclare"); they now live in `Tests\Support`, and the harness registry is `Tests\Support\TenantIsolation::ROUTE_PARAMETERS`.
+
+**Caught during implementation.** The agent found and fixed these itself; listed here so the attribution is honest.
 - The role gate runs before route model binding (priority list), so a non-admin gets 403 for any id and cannot probe which ones exist; mutation-checked.
 - The planned harness assertions silently dropped their failure messages (`assertNotFound()` takes no message; the second argument of `toHaveKey()` is the expected value, so it would always fail); rewritten so a failure names the leaking route.
 - The harness got an owner control (the Acme admin must not get 404 on the same URI), so a route that 404s for everyone cannot pass vacuously, and it clears the current tenant before each request, since the test app reuses one container.
-- The harness was proven to bite: with `SetCurrentTenant` removed from the middleware priority list it fails with `GET /api/team/members/3 leaked across tenants (answered 200 ...)`; restored, it passes.
+- The harness was proven to bite, as the acceptance checks require: with `SetCurrentTenant` removed from the middleware priority list it fails with `GET /api/team/members/3 leaked across tenants (answered 200 ...)`; restored, it passes.
+
+**Known follow-ups.**
+- The harness covers parameterised routes only. List routes (like `GET /api/team/members`) depend on the tenant scope, which fails open when no tenant is current; today each one has its own cross-tenant feature test, but nothing generic checks future list routes yet.
+- Nested routes with scoped bindings and public parameterised routes (e.g. an invitation token) will need harness support when they arrive.
 
 **How to verify.**
 ```bash
