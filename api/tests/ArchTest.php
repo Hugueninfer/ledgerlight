@@ -10,3 +10,9 @@ arch('no debug helpers')
 arch('controllers stay thin')
     ->expect('App\Http\Controllers')
     ->not->toUse('Illuminate\Support\Facades\DB');
+
+arch('tenant-owned models use the tenant scope')
+    ->expect('App\Models')
+    ->classes()
+    ->toUseTrait('App\Tenancy\BelongsToTenant')
+    ->ignoring('App\Models\Tenant');
