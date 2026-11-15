@@ -32,11 +32,11 @@ RUN cp "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
 USER app
 EXPOSE 8000
 
-# ---- prod: code baked into the image, no dev dependencies ----
+# ---- prod: code baked into the image, no dev dependencies, opcache on, non-root ----
 FROM base AS prod
 
-ARG UID=1000
-ARG GID=1000
+ARG UID=10001
+ARG GID=10001
 
 RUN addgroup -g "${GID}" app \
     && adduser -D -u "${UID}" -G app -h /home/app app \
@@ -44,8 +44,20 @@ RUN addgroup -g "${GID}" app \
     && chown -R app:app /config /data \
     && cp "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
+# The image is immutable, so opcache never needs to re-stat files.
+RUN { \
+      echo "opcache.enable=1"; \
+      echo "opcache.validate_timestamps=0"; \
+      echo "opcache.memory_consumption=128"; \
+      echo "opcache.interned_strings_buffer=16"; \
+      echo "opcache.max_accelerated_files=20000"; \
+    } > "$PHP_INI_DIR/conf.d/zz-opcache.ini"
+
 COPY --chown=app:app api/ /app/
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts \
+# .dockerignore strips the contents of the runtime directories: recreate them.
+RUN mkdir -p storage/app/public storage/framework/cache/data storage/framework/sessions \
+        storage/framework/views storage/logs bootstrap/cache \
+    && composer install --no-dev --optimize-autoloader --no-interaction --no-scripts \
     && php artisan package:discover --ansi \
     && chown -R app:app /app/vendor /app/bootstrap/cache /app/storage
 
