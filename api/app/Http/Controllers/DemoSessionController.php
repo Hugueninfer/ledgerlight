@@ -15,6 +15,9 @@ class DemoSessionController extends Controller
 {
     public function store(Request $request): JsonResponse
     {
+        // Cookie sessions only: a client that is not a stateful SPA origin has no session store.
+        abort_unless($request->hasSession(), 400);
+
         // Rule::in, not a database rule: those bypass Eloquent scopes.
         $data = $request->validate([
             'persona' => ['required', 'string', Rule::in(array_keys(config('demo.personas')))],

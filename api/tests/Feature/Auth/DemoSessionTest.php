@@ -53,12 +53,12 @@ it('regenerates the session id on login', function () {
 it('regenerates the csrf token on logout', function () {
     $this->postJson('/api/demo/sessions', ['persona' => 'acme-admin']);
     $before = session()->token();
+    expect($before)->not->toBeNull();
     $this->deleteJson('/api/demo/sessions/current')->assertNoContent();
-    expect(session()->token())->not->toBe($before);
+    expect(session()->token())->not->toBeNull()->and(session()->token())->not->toBe($before);
 });
 
 it('resolves each persona to its own tenant even when emails repeat across tenants', function () {
-    $sam = User::withoutGlobalScopes()->where('email', 'sam@globexfoods.com')->first();
     config()->set('demo.personas.clone-admin', ['tenant' => 'acme', 'email' => 'sam@globexfoods.com']);
     $clone = Tenant::query()->where('slug', 'acme')->firstOrFail();
     app(CurrentTenant::class)->run($clone, fn () => User::factory()->create([
@@ -69,7 +69,6 @@ it('resolves each persona to its own tenant even when emails repeat across tenan
         ->assertCreated()
         ->assertJsonPath('user.name', 'Sam Clone')
         ->assertJsonPath('tenant.slug', 'acme');
-    expect($sam)->not->toBeNull();
 });
 
 it('seeds the demo tenants idempotently', function () {
@@ -77,4 +76,12 @@ it('seeds the demo tenants idempotently', function () {
     expect(Tenant::count())->toBe(2)
         ->and(User::withoutGlobalScopes()->count())->toBe(6)
         ->and(Invitation::withoutGlobalScopes()->count())->toBe(1);
+});
+
+it('refuses a non-stateful client with the error contract instead of a 500', function () {
+    $this->withHeaders(['Origin' => 'http://evil.example', 'Referer' => 'http://evil.example/'])
+        ->postJson('/api/demo/sessions', ['persona' => 'acme-admin'])
+        ->assertStatus(400)
+        ->assertJsonPath('code', 'bad_request')
+        ->assertJsonStructure(['message', 'code', 'request_id']);
 });
