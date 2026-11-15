@@ -13,7 +13,14 @@ it('rejects an invitation whose inviter belongs to another tenant at the databas
         'tenant_id' => $acme->id, 'email' => 'x@acme.test', 'role' => 'reviewer',
         'invited_by_user_id' => $globexAdmin->id, 'expires_at' => now()->addDays(7),
         'created_at' => now(), 'updated_at' => now(),
-    ]))->toThrow(QueryException::class);   // raw insert bypasses Eloquent on purpose
+    ]))->toThrow(function (QueryException $e) {   // raw insert bypasses Eloquent on purpose
+        // The rejection must be the composite foreign key, not any other error
+        // (a missing table or column would also raise a QueryException).
+        expect($e->getCode())->toBe('23000')
+            ->and($e->errorInfo[1] ?? null)->toBe(1452)
+            ->and($e->getMessage())->toContain('a foreign key constraint fails')
+            ->and($e->getMessage())->toContain('invitations_tenant_id_invited_by_user_id_foreign');
+    });
 });
 
 it('accepts an invitation whose inviter belongs to the same tenant', function () {
