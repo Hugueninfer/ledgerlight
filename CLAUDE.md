@@ -24,7 +24,8 @@ bash tests/hooks/commit-msg.test.sh             # commit-msg hook tests
 bash tests/hooks/claude-hooks.test.sh           # Claude Code hook tests
 docker compose exec api vendor/bin/pest         # backend tests (from stage 1)
 docker compose exec api vendor/bin/pint         # backend formatting
-pnpm --dir web test                             # frontend tests (from stage 1)
+pnpm --dir web run test                         # frontend tests (from stage 1)
+make lint && make test                          # everything: pint, larastan, eslint, nuxi typecheck, Pest, Vitest
 ```
 
 There is no PHP or Composer on the host. Run every PHP command in the `api` container or a throwaway `composer:2` container.
