@@ -1,6 +1,8 @@
 <?php
 
+use App\Exceptions\ApiException;
 use App\Http\Middleware\AssignRequestId;
+use App\Http\Middleware\RequireRole;
 use App\Http\Middleware\SetCurrentTenant;
 use App\Support\ErrorCode;
 use Illuminate\Foundation\Application;
@@ -30,6 +32,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api(append: [SetCurrentTenant::class]);
         $middleware->prependToPriorityList(before: SubstituteBindings::class, prepend: SetCurrentTenant::class);
 
+        // Role gate, e.g. role:admin. Before binding too: a forbidden user gets 403 whatever the id.
+        $middleware->alias(['role' => RequireRole::class]);
+        $middleware->prependToPriorityList(before: SubstituteBindings::class, prepend: RequireRole::class);
+
         // Caddy is the only thing that reaches this app (port 8000 is not published), so every
         // forwarded header can be trusted: real client IP, scheme, host and port.
         $middleware->trustProxies(at: '*', headers: Request::HEADER_X_FORWARDED_FOR
@@ -49,21 +55,31 @@ return Application::configure(basePath: dirname(__DIR__))
             }
 
             $status = $response->getStatusCode();
-            $code = ErrorCode::fromStatus($status);
 
-            // 4xx messages are fixed per code; 5xx only expose the real message in debug mode.
-            $message = $status >= 500 && $status !== 503 && config('app.debug')
-                ? $e->getMessage()
-                : $code->message();
+            if ($e instanceof ApiException) {
+                // The only opt-in to a custom message: written for the user by the code that throws it.
+                $body = [
+                    'message' => $e->getMessage(),
+                    'code' => $e->errorCode->value,
+                    'request_id' => $request->attributes->get('request_id'),
+                ] + $e->extra;
+            } else {
+                $code = ErrorCode::fromStatus($status);
 
-            $body = [
-                'message' => $message,
-                'code' => $code->value,
-                'request_id' => $request->attributes->get('request_id'),
-            ];
+                // 4xx messages are fixed per code; 5xx only expose the real message in debug mode.
+                $message = $status >= 500 && $status !== 503 && config('app.debug')
+                    ? $e->getMessage()
+                    : $code->message();
 
-            if ($e instanceof ValidationException) {
-                $body['errors'] = $e->errors();
+                $body = [
+                    'message' => $message,
+                    'code' => $code->value,
+                    'request_id' => $request->attributes->get('request_id'),
+                ];
+
+                if ($e instanceof ValidationException) {
+                    $body['errors'] = $e->errors();
+                }
             }
 
             $json = new JsonResponse($body, $status);

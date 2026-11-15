@@ -1,5 +1,7 @@
 <?php
 
+use App\Exceptions\ApiException;
+use App\Support\ErrorCode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -78,4 +80,36 @@ it('maps other client errors to bad_request and conflicts to conflict', function
 
     $this->get('/api/_probe/bad')->assertStatus(400)->assertJsonPath('code', 'bad_request');
     $this->get('/api/_probe/clash')->assertStatus(409)->assertJsonPath('code', 'conflict');
+});
+
+it('renders an ApiException verbatim with its extra fields inside the contract', function () {
+    Route::get('/api/_probe/custom', fn () => throw new ApiException(
+        403,
+        ErrorCode::Forbidden,
+        'Only admins can do this.',
+        ['required' => 'admin', 'code' => 'overridden', 'request_id' => 'req_spoofed'],
+        ['X-Probe' => 'kept'],
+    ));
+
+    $res = $this->get('/api/_probe/custom');
+
+    $res->assertForbidden()
+        ->assertExactJson([
+            'message' => 'Only admins can do this.',
+            'code' => 'forbidden',
+            'request_id' => $res->headers->get('X-Request-Id'),
+            'required' => 'admin',
+        ])
+        ->assertHeader('X-Probe', 'kept');
+    expect($res->json('request_id'))->toMatch('/^req_[A-Za-z0-9]{8}$/');
+});
+
+it('keeps an ApiException message on a 5xx outside debug mode', function () {
+    config(['app.debug' => false]);
+    Route::get('/api/_probe/upstream', fn () => throw new ApiException(503, ErrorCode::ServiceUnavailable, 'Tallyline is down, retrying soon.'));
+
+    $this->get('/api/_probe/upstream')
+        ->assertStatus(503)
+        ->assertJsonPath('code', 'service_unavailable')
+        ->assertJsonPath('message', 'Tallyline is down, retrying soon.');
 });
