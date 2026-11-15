@@ -27,4 +27,4 @@ Every time the owner overrides or fixes what the agent did, add a row. The patte
 
 | Date | Stage | What the agent did | What I changed | Why |
 |---|---|---|---|---|
-| | | | | |
+| 2026-11-15 | CI (Task 6) | Reverted a diagnostic commit with `git revert`, producing header `Revert "ci: surface pest output as annotation for diagnosis"` (0843bca), which the commit-msg hook rejects but git's revert flow bypassed | Accepted 0843bca as a one-off (history not rewritten, no force-push); extended `.githooks/commit-msg` to accept git's `Revert "..."` header while still rejecting AI trailers | Pushed history is immutable here; the hook should match git's default revert format |
