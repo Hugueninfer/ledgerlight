@@ -1,0 +1,61 @@
+# Production overlay: docker compose -f compose.yaml -f compose.prod.yaml up -d
+# Requires Compose v2.24+ (!reset / !override). Secrets come from the server's env file
+# (/opt/ledgerlight/.env, never committed); see deploy/production.env.example.
+name: ledgerlight
+
+services:
+  api:
+    build: !reset null
+    image: ghcr.io/hugueninfer/ledgerlight-api:${TAG:-latest}
+    volumes: !override
+      - storage:/app/storage
+    env_file:
+      - ${ENV_FILE:-.env}
+    restart: unless-stopped
+
+  web:
+    build: !reset null
+    image: ghcr.io/hugueninfer/ledgerlight-web:${TAG:-latest}
+    volumes: !reset []
+    restart: unless-stopped
+
+  caddy:
+    ports: !override
+      - "${LEDGERLIGHT_HTTP_PORT_PROD:-80}:80"
+      - "${LEDGERLIGHT_HTTPS_PORT_PROD:-443}:443"
+    environment:
+      APP_ADDRESS: ${APP_DOMAIN:?Set APP_DOMAIN in the server .env}
+    volumes: !override
+      - ./docker/caddy/Caddyfile.prod:/etc/caddy/Caddyfile:ro
+      - ./docker/caddy/site.caddy:/etc/caddy/site.caddy:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+
+  mysql:
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Set DB_ROOT_PASSWORD in the server .env}
+      MYSQL_DATABASE: ${DB_DATABASE:-ledgerlight}
+      MYSQL_USER: ${DB_USERNAME:-ledgerlight}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in the server .env}
+    volumes: !override
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    restart: unless-stopped
+
+  redis:
+    volumes: !override
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
+  mysql_data:
+  redis_data:
+  storage:
