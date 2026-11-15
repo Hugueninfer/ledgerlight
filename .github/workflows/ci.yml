@@ -76,9 +76,7 @@ jobs:
 
       - run: vendor/bin/pint --test
       - run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress
-      - run: vendor/bin/pest --ci --colors=never > /tmp/pest.txt 2>&1
-      - if: failure()
-        run: echo "::error::$(head -c 6000 /tmp/pest.txt | sed ':a;N;$!ba;s/\n/%0A/g')"
+      - run: vendor/bin/pest --ci
 
   web:
     runs-on: ubuntu-24.04
