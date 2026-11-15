@@ -52,7 +52,7 @@ class DemoTenantsSeeder extends Seeder
     {
         return User::query()->updateOrCreate(
             ['email' => $email],
-            ['name' => $name, 'role' => $role, 'email_verified_at' => now()],
+            ['name' => $name, 'role' => $role],
         );
     }
 }
