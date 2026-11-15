@@ -7,7 +7,8 @@ cmd="$(jq -r '.tool_input.command // empty' 2>/dev/null)"
 block() { printf 'Blocked: %s\n' "$1" >&2; exit 2; }
 
 ws='[[:space:]]'
-is_git() { printf '%s' "$cmd" | grep -Eq "git$ws+$1($ws|\$)"; }
+gopt="(-C$ws+[^ ]+|-c$ws+[^ ]+|--[a-z][a-z-]*(=[^ ]+)?)"   # git global options
+is_git() { printf '%s' "$cmd" | grep -Eq "git($ws+$gopt)*$ws+$1($ws|\$)"; }
 
 if is_git commit || is_git push; then
   printf '%s' "$cmd" | grep -Eq -- "(^|$ws)--no-verify($ws|\$)" \

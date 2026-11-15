@@ -49,4 +49,4 @@ There is no PHP or Composer on the host. Run every PHP command in the `api` cont
 4. **Verify before claiming done.** Run the tests and read the output.
 5. **Record corrections.** When the owner overrides what the agent did, add a row to the corrections log in `docs/ai-workflow.md`.
 
-Hooks enforce part of this: `--no-verify`, force pushes and AI trailers are blocked, `.env*` files (except `.env.example`) and migrations already on `origin/main` are read-only, and edited files are auto-formatted. If a hook blocks you, fix the cause; do not look for a way around it.
+Hooks enforce part of this: `--no-verify`, force pushes and AI trailers are blocked, `.env*` files (except `.env.example`) and migrations already on `origin/main` are read-only, and edited files are auto-formatted once `api/` and `web/` exist (stage 1). If a hook blocks you, fix the cause; do not look for a way around it.

@@ -3,7 +3,7 @@
 path="$(jq -r '.tool_input.file_path // empty' 2>/dev/null)"
 [ -z "$path" ] && exit 0
 
-root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+root="${LEDGERLIGHT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"  # override is for tests
 case "$path" in
   "$root"/*) rel="${path#"$root"/}" ;;
   /*) exit 0 ;;
