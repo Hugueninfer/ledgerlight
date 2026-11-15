@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Turns the default users table into a tenant-owned table. The default
  * migration is already on main (and immutable), so this alters it.
+ * Assumes an empty users table: there is no backfill of tenant_id or role.
  */
 return new class extends Migration
 {

@@ -18,8 +18,9 @@ return new class extends Migration
             $table->timestamp('expires_at');
             $table->timestamps();
 
-            // One pending invitation per email per tenant; tenant_id leads,
-            // so this index also serves the tenant_id foreign key.
+            // One invitation per email per tenant, whatever its state (pending,
+            // accepted or expired); tenant_id leads, so this index also serves
+            // the tenant_id foreign key.
             $table->unique(['tenant_id', 'email']);
             $table->tenantKey();
 
