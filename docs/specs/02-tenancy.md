@@ -18,3 +18,36 @@ Two companies share one database and can never see or reference each other's dat
 - A raw insert of an Acme invitation whose inviter is a Globex user is rejected by MySQL.
 - `POST /api/demo/sessions` signs in as a persona; `GET /api/me` returns the user and tenant.
 - The route isolation harness fails when `SetCurrentTenant` is removed from the middleware priority list.
+
+## Outcome
+
+**Status.** Live deploy still pending: waiting for the Oracle VM (see docs/deploy.md).
+
+**What.** Tenants and roles; a `BelongsToTenant` trait (global scope plus create/update guards) driven by a scoped `CurrentTenant`; composite `(tenant_id, x_id)` foreign keys via the `tenantKey()` / `tenantForeign()` macros; Acme and Globex demo tenants with password-less persona sign-in over Sanctum cookie sessions; `GET /api/me`; admin-only team endpoints behind a `role:<role>` gate that answers 403 with the user's and the required role; and a route isolation harness that calls every parameterised API route as a Globex admin against Acme resources.
+
+**Why.** Tenant isolation is the headline promise, so it is enforced twice (the application scope, and keys the database itself checks) and proven on every route, not just on the routes someone remembered to test.
+
+**How I steered the agent.**
+- `tenant_id` could be set to another tenant explicitly on create, or changed on update; both now throw `TenantMismatchException`.
+- The cross-tenant foreign key test passed even with the table missing (any exception counted); it now does a same-tenant control insert first and asserts SQLSTATE 23000 / MySQL errno 1452.
+- The users table migration was already merged, so the tenancy columns went into a new alter migration instead of editing it.
+- `InvitationFactory` picked an inviter from any tenant; it now creates the inviter in the invitation's own tenant.
+- Personas were looked up by email alone (ambiguous, emails are unique per tenant); now tenant slug + email. Persona validation uses `Rule::in` instead of database rules, which bypass Eloquent scopes.
+- `SetCurrentTenant`'s positive path and its order before route model binding were untested; both are pinned, with mutation checks.
+- Demo sign-in from a non-browser client (no cookie session) returned 500; it is now a 400 with the error contract.
+- Logout's CSRF token regeneration is pinned by a test.
+- The error handler only renders fixed per-code messages, so the role gate's body could not carry its own message and fields; `ApiException` is now the single, explicit opt-in for that, tested directly.
+- The role gate runs before route model binding (priority list), so a non-admin gets 403 for any id and cannot probe which ones exist; mutation-checked.
+- The planned harness assertions silently dropped their failure messages (`assertNotFound()` takes no message; the second argument of `toHaveKey()` is the expected value, so it would always fail); rewritten so a failure names the leaking route.
+- The harness got an owner control (the Acme admin must not get 404 on the same URI), so a route that 404s for everyone cannot pass vacuously, and it clears the current tenant before each request, since the test app reuses one container.
+- The harness was proven to bite: with `SetCurrentTenant` removed from the middleware priority list it fails with `GET /api/team/members/3 leaked across tenants (answered 200 ...)`; restored, it passes.
+
+**How to verify.**
+```bash
+make lint && make test
+docker compose exec api vendor/bin/pest tests/Feature/Tenancy
+# the harness bites: comment out the prependToPriorityList(... SetCurrentTenant ...) line
+# in api/bootstrap/app.php, rerun RouteIsolationTest, see "leaked across tenants", restore
+docker compose exec api vendor/bin/pest tests/Feature/Auth tests/Feature/Team
+```
+CI: see the badge in the README or https://github.com/Hugueninfer/ledgerlight/actions/workflows/ci.yml
