@@ -12,24 +12,26 @@ interface HttpErrorLike {
 
 export function useApiHealth() {
   const config = useRuntimeConfig()
-  const status = ref<ApiHealthStatus>('unknown')
 
-  async function refresh(): Promise<void> {
-    // Browser calls are same-origin through the edge; server-side calls use the internal base URL.
+  // Fetched on the server too, so the status is part of the SSR payload (no flash on hydration).
+  const { data, refresh: refreshData } = useAsyncData<ApiHealthStatus>('api-health', async () => {
+    // Server-side calls go straight to the API container; browser calls are same-origin through the edge.
     const base = import.meta.server ? config.apiInternalBase : ''
     try {
       const payload = await $fetch<HealthPayload>(`${base}/api/health`, { headers: { Accept: 'application/json' } })
-      status.value = payload.status === 'ok' ? 'ok' : 'fail'
+      return payload.status === 'ok' ? 'ok' : 'fail'
     }
     catch (error) {
-      const { statusCode, status: httpStatus, data } = error as HttpErrorLike
+      const { statusCode, status: httpStatus, data: body } = error as HttpErrorLike
       // The API answered but reported a failing dependency: 503 with status "fail".
-      status.value = (statusCode ?? httpStatus) === 503 || data?.status === 'fail' ? 'fail' : 'unknown'
+      return (statusCode ?? httpStatus) === 503 || body?.status === 'fail' ? 'fail' : 'unknown'
     }
-  }
+  }, { default: () => 'unknown' })
 
-  if (import.meta.client) {
-    void refresh()
+  const status = computed<ApiHealthStatus>(() => data.value ?? 'unknown')
+
+  async function refresh(): Promise<void> {
+    await refreshData()
   }
 
   return { status, refresh }
