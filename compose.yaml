@@ -12,7 +12,6 @@ services:
     volumes:
       - ./api:/app
     environment:
-      APP_ENV: local
       DB_HOST: mysql
       REDIS_HOST: redis
     depends_on:
