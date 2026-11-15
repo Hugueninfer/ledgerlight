@@ -1,0 +1,11 @@
+# Shared site body, imported by Caddyfile (dev) and Caddyfile.prod (production).
+encode zstd gzip
+
+@api path /api/* /sanctum/* /up
+handle @api {
+	reverse_proxy api:8000
+}
+
+handle {
+	reverse_proxy web:3000
+}

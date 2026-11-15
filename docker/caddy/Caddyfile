@@ -3,14 +3,5 @@
 }
 
 {$APP_ADDRESS::8080} {
-	encode zstd gzip
-
-	@api path /api/* /sanctum/* /up
-	handle @api {
-		reverse_proxy api:8000
-	}
-
-	handle {
-		reverse_proxy web:3000
-	}
+	import /etc/caddy/site.caddy
 }
