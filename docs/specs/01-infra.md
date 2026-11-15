@@ -9,7 +9,7 @@ One command brings up the whole stack locally, CI proves it, and the same images
 - MySQL and Redis are not published to the host; only the edge is reachable.
 - JSON error contract: every error has `code`, `message` and a request id. Codes include `bad_request`, `conflict`, `csrf_mismatch`, `too_many_requests`, `server_error`. Headers such as `Retry-After` and `Allow` are preserved.
 - Trusted proxies configured behind Caddy so client IPs and scheme are right, covered by a test.
-- CI jobs: lint, API tests (`APP_ENV=testing`, architecture rules), web checks, image builds.
+- CI jobs: `api` (lint, tests with `APP_ENV=testing`, architecture rules), `web` (lint, tests, build), `hooks` (shell tests for the agent guards).
 - Images are built for arm64 on GitHub's `ubuntu-24.04-arm` runners and pushed to GHCR (SHA and `latest` tags).
 - Deploy runs via `workflow_run` after CI, gated to same-repo `push` events on `main`; SSH step uses a pinned action SHA, a host-key fingerprint (fail closed) and minimal permissions.
 
