@@ -14,7 +14,7 @@
 
 - Everything in English: code, comments, docs, commit messages, UI copy.
 - Conventional Commits (`type(scope): subject`), many small commits, **no `Co-Authored-By` or other AI attribution trailers**.
-- One branch per stage: `stage/00-agent-setup`, `stage/01-infra`, `stage/02-tenancy`; each merged through a PR whose description has "What / Why / How I steered the agent / How to verify".
+- All commits go **directly to `main`** (owner's decision, no PRs). Each stage closes with: an "Outcome" section appended to its mini-spec in `docs/specs/` (What / Why / How I steered the agent / How to verify) and an annotated tag `stage-NN` (`git tag -a stage-01 -m "Stage 1: infra"`), pushed with `git push origin main --follow-tags`.
 - No PHP or Composer on the host: every PHP command runs in the `api` container (`docker compose exec api …`) or a throwaway `composer:2` container.
 - Image targets must build for `linux/arm64` (production) and `linux/amd64` (dev, CI).
 - Money in integer cents; tenant-owned tables always carry `tenant_id` (applies from Task 8 on).
@@ -32,13 +32,12 @@
 
 ---
 
-## Stage 0 — Repo & agent setup (branch `stage/00-agent-setup`)
+## Stage 0 — Repo & agent setup
 
 ### Task 0: Owner prerequisites (human, not agent)
 
-These unblock Task 7 and the PR workflow. The agent continues with Tasks 1–6 meanwhile.
+These unblock Task 7. The agent continues with Tasks 1–6 meanwhile.
 
-- [ ] Install GitHub CLI and authenticate **as Hugueninfer** using the `github-pessoal` SSH key: `sudo apt install gh && gh auth login` (choose SSH, existing key `~/.ssh/id_ed25519_pessoal`). Verify: `gh auth status` shows `Hugueninfer`.
 - [ ] Create a Groq account and a free API key (no card). Record the free-plan limits from the console's Limits page into a private note (needed in Plan 3).
 - [ ] Create an Oracle Cloud account (choose a home region with Ampere A1 availability; it is permanent) and an `VM.Standard.A1.Flex` instance: Ubuntu 24.04 aarch64, 4 OCPU, 24 GB RAM, public IPv4, your SSH public key.
 - [ ] Create a DuckDNS subdomain (e.g. `ledgerlight.duckdns.org`) pointing at the VM's public IP.
@@ -71,10 +70,9 @@ Allowed types: `feat fix docs style refactor perf test build ci chore revert`; s
 - [ ] **Step 2: Run it** — `bash tests/hooks/commit-msg.test.sh` → FAIL (hook missing).
 - [ ] **Step 3: Implement `.githooks/commit-msg`** (POSIX sh + `grep -Ei`), make it executable, and `scripts/setup.sh`.
 - [ ] **Step 4: Run** `bash tests/hooks/commit-msg.test.sh` → all PASS; run `bash scripts/setup.sh`.
-- [ ] **Step 5: Commit** on branch `stage/00-agent-setup`:
+- [ ] **Step 5: Commit** on `main`:
 
 ```bash
-git checkout -b stage/00-agent-setup
 git add .editorconfig .gitignore .gitattributes README.md .githooks scripts tests/hooks
 git commit -m "chore: add repo conventions and commit-msg hook"
 ```
@@ -140,11 +138,11 @@ The migration rule: a file under `api/database/migrations/` that exists on `orig
 - [ ] **Step 2: Run** `bash tests/hooks/claude-hooks.test.sh` → FAIL.
 - [ ] **Step 3: Implement the three scripts.** `format-file.sh`: for `api/**/*.php` run `docker compose exec -T api vendor/bin/pint <path-relative-to-api>` only if `docker compose ps --status running api` lists it; for `web/**/*.{ts,vue,js}` run `pnpm --dir web exec eslint --fix <path>` only if `web/node_modules` exists; always exit 0.
 - [ ] **Step 4: Run** the hook tests → PASS. Write `CLAUDE.md`, rules, `AGENTS.md`, `docs/ai-workflow.md`, `docs/specs/00-agent-setup.md`.
-- [ ] **Step 5: Commit** in small commits, e.g. `feat(agent): add guard and format hooks`, `docs(agent): add project rules and claude md`, `docs: add ai workflow log`. Push the branch, open the PR (`gh pr create`), merge it (`gh pr merge --merge`), and return to `main`.
+- [ ] **Step 5: Commit** in small commits, e.g. `feat(agent): add guard and format hooks`, `docs(agent): add project rules and claude md`, `docs: add ai workflow log`. Append the Outcome section to `docs/specs/00-agent-setup.md`, tag `stage-00`, push `main` with tags.
 
 ---
 
-## Stage 1 — Infra (branch `stage/01-infra`)
+## Stage 1 — Infra
 
 ### Task 3: Laravel API in Docker with health check and error contract
 
@@ -206,7 +204,7 @@ it('replaces a malformed incoming request id', function () {
 - [ ] **Step 3: Run** `make test-api` → FAIL.
 - [ ] **Step 4: Implement** `HealthController` (DB: `DB::select('select 1')`; Redis: `Redis::connection()->ping()`; each wrapped in try/catch), `AssignRequestId` (stores the id in `Context::add('request_id', …)` so logs carry it), and the exception rendering in `bootstrap/app.php` mapping 404/405 → `not_found`, 403 → `forbidden`, 401 → `unauthenticated`, 422 → `validation_failed` (+`errors`), 503 → `service_unavailable`, other → `server_error` (message "Something went wrong." in production; real message only when `app.debug`).
 - [ ] **Step 5: Run** `make test-api` → PASS.
-- [ ] **Step 6: Commit** (branch `stage/01-infra`): `build(api): scaffold laravel 13 on frankenphp`, `build: add compose stack with mysql and redis`, `feat(api): add health endpoint`, `feat(api): add request ids and json error contract`.
+- [ ] **Step 6: Commit**: `build(api): scaffold laravel 13 on frankenphp`, `build: add compose stack with mysql and redis`, `feat(api): add health endpoint`, `feat(api): add request ids and json error contract`.
 
 ### Task 4: Nuxt app and Caddy edge
 
@@ -259,20 +257,20 @@ arch('controllers stay thin')->expect('App\Http\Controllers')->not->toUse('Illum
 - Create: `.github/workflows/ci.yml`
 
 **Interfaces:**
-- Produces: required checks `api` and `web` on every PR and on `main`.
+- Produces: jobs `api`, `web`, `hooks` on every push to `main`.
 
 Jobs:
 - `api` (ubuntu-24.04): services `mysql:8.4` (db `ledgerlight_test`) and `redis:8-alpine`; `shivammathur/setup-php` with PHP 8.5 and the Task 3 extensions; `composer install`; `vendor/bin/pint --test`; `vendor/bin/phpstan`; `vendor/bin/pest --ci`.
 - `web` (ubuntu-24.04): `pnpm/action-setup`, Node 22, `pnpm install --frozen-lockfile`, `pnpm lint`, `pnpm typecheck`, `pnpm vitest run`.
 - `hooks`: `bash tests/hooks/commit-msg.test.sh && bash tests/hooks/claude-hooks.test.sh`.
 
-- [ ] **Step 1:** Write the workflow; push `stage/01-infra`; open the PR.
-- [ ] **Step 2: Verify** the run is green: `gh pr checks --watch` → `api`, `web`, `hooks` pass.
+- [ ] **Step 1:** Write the workflow; commit; push `main`.
+- [ ] **Step 2: Verify** the run is green through the public API (no `gh` installed): `curl -s "https://api.github.com/repos/Hugueninfer/ledgerlight/actions/runs?branch=main&per_page=1" | jq -r '.workflow_runs[0] | .status + " " + (.conclusion // "")'` → `completed success`. On failure, read the job logs in the browser and fix.
 - [ ] **Step 3: Commit**: `ci: add lint and test workflow`.
 
 ### Task 7: Production images and hello deploy
 
-Blocked on Task 0 (VM, DuckDNS, `gh`).
+Blocked on Task 0 (VM, DuckDNS). Until then, do Steps 1–2 and continue with Stage 2; return here when the VM exists.
 
 **Files:**
 - Modify: `docker/php/Dockerfile`, `docker/web/Dockerfile` (`prod` targets: no dev deps, opcache on, non-root user)
@@ -292,12 +290,12 @@ Blocked on Task 0 (VM, DuckDNS, `gh`).
 - [ ] **Step 1:** Build prod images locally for arm64 to catch issues early: `docker buildx build --platform linux/arm64 --target prod -f docker/php/Dockerfile api` → succeeds.
 - [ ] **Step 2:** Run the prod overlay locally with `APP_DOMAIN=localhost`: `docker compose -f compose.yaml -f compose.prod.yaml up -d` → `curl -k https://localhost/api/health` → `"status":"ok"`.
 - [ ] **Step 3:** Owner follows `docs/deploy.md` on the VM (agent guides; agent never handles the VM's private keys or `.env` secrets).
-- [ ] **Step 4:** Merge the stage PR; watch `deploy.yml` → green. **Verify** from outside: `curl -s https://<host>/api/health` → `{"status":"ok",…}` and the placeholder page loads over HTTPS.
-- [ ] **Step 5: Commit** (before merge): `build: add production images and compose overlay`, `ci: deploy to oracle vm on main`, `docs: add deploy runbook`.
+- [ ] **Step 4:** Push `main`; watch `deploy.yml` → green (same `curl` + `jq` check, filtered by `workflow_id=deploy.yml`). **Verify** from outside: `curl -s https://<host>/api/health` → `{"status":"ok",…}` and the placeholder page loads over HTTPS.
+- [ ] **Step 5: Commit**, then append Stage 1's Outcome, tag `stage-01`, push with tags: `build: add production images and compose overlay`, `ci: deploy to oracle vm on main`, `docs: add deploy runbook`.
 
 ---
 
-## Stage 2 — Auth & tenancy (branch `stage/02-tenancy`)
+## Stage 2 — Auth & tenancy
 
 Write `docs/specs/02-tenancy.md` first (mini-spec: the decisions in this section, 15–25 lines).
 
@@ -501,7 +499,7 @@ Add the `actingAsPersona(string $persona): static` helper to `tests/Pest.php` (l
 - [ ] **Step 2: Run** → FAIL.
 - [ ] **Step 3: Implement** the middleware, controller, resource and routes.
 - [ ] **Step 4: Run** `make test-api && make lint` → PASS. Then **prove the harness bites**: temporarily remove `SetCurrentTenant` from the priority list, run `RouteIsolationTest` → it must FAIL with "leaked across tenants"; restore → PASS. Record this in `docs/ai-workflow.md`'s corrections log if the agent's first implementation got the ordering wrong.
-- [ ] **Step 5: Commit**: `feat(api): add role middleware with forbidden contract`, `feat(api): add team member endpoints`, `test(api): add route isolation harness`. Push, open the stage PR, CI green, merge → deploy runs → `curl https://<host>/api/health` still ok.
+- [ ] **Step 5: Commit**: `feat(api): add role middleware with forbidden contract`, `feat(api): add team member endpoints`, `test(api): add route isolation harness`. Append the Outcome to `docs/specs/02-tenancy.md`, tag `stage-02`, push with tags → CI green → deploy runs → `curl https://<host>/api/health` still ok.
 
 ---
 
@@ -509,5 +507,5 @@ Add the `actingAsPersona(string $persona): static` helper to `tests/Pest.php` (l
 
 - `main` is deployed at `https://<duckdns-host>` and `/api/health` answers ok.
 - `make lint && make test` and the hook tests pass locally and in CI.
-- Three merged PRs (stages 0, 1, 2) with the What / Why / How I steered the agent / How to verify description.
+- Tags `stage-00`, `stage-01`, `stage-02` on `main`, each stage's mini-spec ending with its Outcome section.
 - No commit on `main` contains an AI co-author trailer: `git log main --format=%B | grep -ci co-authored-by` → `0`.
