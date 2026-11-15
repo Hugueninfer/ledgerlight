@@ -1,12 +1,14 @@
 <?php
 
 use App\Http\Middleware\AssignRequestId;
+use App\Http\Middleware\SetCurrentTenant;
 use App\Support\ErrorCode;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -19,6 +21,14 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend(AssignRequestId::class);
+
+        // Cookie-based SPA auth: Sanctum starts the session for requests from SANCTUM_STATEFUL_DOMAINS.
+        $middleware->statefulApi();
+
+        // The tenant must be current before route model binding runs, otherwise a binding
+        // resolves unscoped. The priority list decides order across the whole stack.
+        $middleware->api(append: [SetCurrentTenant::class]);
+        $middleware->prependToPriorityList(before: SubstituteBindings::class, prepend: SetCurrentTenant::class);
 
         // Caddy is the only thing that reaches this app (port 8000 is not published), so every
         // forwarded header can be trusted: real client IP, scheme, host and port.
