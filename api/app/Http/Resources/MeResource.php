@@ -5,7 +5,6 @@ namespace App\Http\Resources;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Str;
 use LogicException;
 
 /**
@@ -32,7 +31,7 @@ class MeResource extends JsonResource
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->role->value,
-                'initials' => $this->initials($user),
+                'initials' => $user->initials(),
             ],
             'tenant' => [
                 'id' => $tenant->id,
@@ -44,15 +43,5 @@ class MeResource extends JsonResource
                 'member_count' => User::query()->withoutGlobalScopes()->where('tenant_id', $tenant->id)->count(),
             ],
         ];
-    }
-
-    private function initials(User $user): string
-    {
-        return Str::of($user->name)
-            ->explode(' ')
-            ->filter()
-            ->map(fn (string $part): string => Str::upper(Str::substr($part, 0, 1)))
-            ->take(2)
-            ->implode('');
     }
 }
