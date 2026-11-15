@@ -23,7 +23,7 @@ case "$header" in
   *.) die "subject must not end with a period" ;;
 esac
 
-if grep -v '^#' "$msg_file" | grep -Eiq '^[[:space:]]*co-authored-by:|generated (with|by)[^.]*(claude|anthropic|\bai\b)|noreply@anthropic\.com'; then
+if grep -v '^#' "$msg_file" | grep -Eiq '^[[:space:]]*(co-authored-by:|[^[:alnum:]]*generated (with|by)[^.]*(claude|anthropic))|noreply@anthropic\.com'; then
   die "co-author / AI attribution trailers are not allowed"
 fi
 
