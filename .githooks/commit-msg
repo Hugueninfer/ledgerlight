@@ -14,6 +14,13 @@ esac
 
 [ -n "$header" ] || die "empty commit message"
 
+# git's default revert header: Revert "<original header>" (original already passed this hook).
+is_revert=0
+case "$header" in
+  'Revert "'*'"') is_revert=1 ;;
+esac
+
+if [ "$is_revert" -eq 0 ]; then
 [ "${#header}" -le 72 ] || die "header longer than 72 characters"
 
 printf '%s\n' "$header" | grep -Eq '^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9-]+\))?: [a-z0-9]' \
@@ -22,6 +29,7 @@ printf '%s\n' "$header" | grep -Eq '^(feat|fix|docs|style|refactor|perf|test|bui
 case "$header" in
   *.) die "subject must not end with a period" ;;
 esac
+fi
 
 if grep -v '^#' "$msg_file" | grep -Eiq '^[[:space:]]*(co-authored-by:|[^[:alnum:]]*generated (with|by)[^.]*(claude|anthropic))|noreply@anthropic\.com'; then
   die "co-author / AI attribution trailers are not allowed"

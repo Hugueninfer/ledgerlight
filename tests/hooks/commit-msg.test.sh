@@ -10,6 +10,8 @@ expect_ok   "docs: add product design spec and UI reference"
 expect_ok   $'fix(web): handle empty inbox\n\nLonger body explaining why.'
 expect_ok   "Merge branch 'x' into main"
 expect_ok   "revert: undo bad change"
+expect_ok   $'Revert "feat(api): add health endpoint"\n\nThis reverts commit 0123456789abcdef0123456789abcdef01234567.'
+expect_fail $'Revert "x"\n\nCo-Authored-By: Claude <noreply@anthropic.com>'
 expect_fail "Added stuff"
 expect_fail "feat: Add thing."
 expect_fail "feat: add thing."
