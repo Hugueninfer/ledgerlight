@@ -19,6 +19,13 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend(AssignRequestId::class);
+
+        // Caddy is the only thing that reaches this app (port 8000 is not published), so every
+        // forwarded header can be trusted: real client IP, scheme, host and port.
+        $middleware->trustProxies(at: '*', headers: Request::HEADER_X_FORWARDED_FOR
+            | Request::HEADER_X_FORWARDED_HOST
+            | Request::HEADER_X_FORWARDED_PORT
+            | Request::HEADER_X_FORWARDED_PROTO);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $isApi = fn (Request $request): bool => $request->is('api/*') || $request->expectsJson();
