@@ -55,7 +55,7 @@ The pitch in one line: **"AI you can verify."** Most teams can demo AI; few can 
 - **Hosting**: Oracle Cloud Always Free (Ampere A1 ARM VM). Total running cost $0. See §11.
 - **Language**: all code, docs, commits and UI in English. US formats (USD, MM/DD/YYYY).
 - **Schedule**: no deadline. Polish over speed, but no feature without a clear purpose. Stages run in the order of §13.
-- **Git**: public repo on GitHub account `hugueninfer`. One branch + PR per stage (§13), many small commits inside, Conventional Commits, English, **no AI co-author trailers**.
+- **Git**: public repo on GitHub account `hugueninfer`. One branch + PR per stage (§13; superseded, see the dated note there: commits go directly to `main`), many small commits inside, Conventional Commits, English, **no AI co-author trailers**.
 
 ## 4. Approaches considered
 
@@ -218,7 +218,7 @@ Uses: (a) seed data for demo tenants, (b) the eval set ("N labeled invoices", N 
 - **Database-level guarantee without RLS** (MySQL has none): composite unique keys `(tenant_id, id)` and **composite foreign keys** `(tenant_id, x_id) → x(tenant_id, id)` make cross-tenant references impossible in the database itself.
 - Policies per role for every action; route model binding resolves inside the tenant scope so foreign IDs 404.
 - **Proven by tests**: a dedicated test suite iterates every API route as a user of tenant B against tenant A resources and asserts 404/403; a DB test asserts the composite FKs reject cross-tenant inserts.
-- Login page copy: "Tenant isolation is enforced in the database with tenant-scoped foreign keys and tested on every route. Try opening an Acme invoice URL while signed in as Globex: you get a 404."
+- Login page copy: "Tenant isolation is enforced in the database with tenant-scoped foreign keys and tested on every parameterised route. Try opening an Acme invoice URL while signed in as Globex: you get a 404."
 - Auth: Sanctum SPA cookie auth. Nuxt and API served from the **same origin** behind Caddy (`/` → Nuxt, `/api` → Laravel) to avoid CORS and cross-site cookie issues.
 
 ## 10. Demo mode
@@ -254,6 +254,8 @@ Uses: (a) seed data for demo tenants, (b) the eval set ("N labeled invoices", N 
 
 ## 13. Delivery: stages, branches, commits
 
+> **Note (2026-11-15):** the owner chose to commit directly to `main` instead of using one branch and PR per stage. Each stage's Outcome section in `docs/specs/` and its `stage-NN` tag replace the PR description and review notes.
+
 Each stage = one branch + one PR with a short description and review notes, many small Conventional Commits inside (English, no co-author trailers). Each stage starts with a mini-spec in `docs/specs/NN-<stage>.md` written before code.
 
 0. **Repo & agent setup** — README skeleton, `.claude/` (CLAUDE.md, rules, hooks), AGENTS.md, Conventional Commit lint, editorconfig.
@@ -281,6 +283,8 @@ Order can be adjusted, but deploy (stage 13) is exercised early: a "hello" deplo
 - GitHub Actions: lint + tests on PR; on `main`, build arm64 images, push to GHCR, deploy, run a post-deploy health check.
 
 ## 14. Job requirement → evidence map (for the README)
+
+> **Note (2026-11-15):** the owner chose to commit directly to `main` instead of using one branch and PR per stage. Each stage's Outcome section in `docs/specs/` and its `stage-NN` tag replace the PR description and review notes.
 
 | Requirement | Where a reviewer sees it |
 |---|---|
