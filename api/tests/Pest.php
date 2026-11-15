@@ -1,8 +1,7 @@
 <?php
 
-use App\Models\Tenant;
-use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\TenantUsers;
 use Tests\TestCase;
 
 /**
@@ -14,8 +13,7 @@ trait ActsAsPersona
      * Act as a demo persona from config('demo.personas'), e.g. 'acme-admin'.
      *
      * Emails are only unique per tenant, so the user is looked up by the
-     * persona's tenant slug + email, outside the tenant scope (no tenant is
-     * current yet when a test starts).
+     * persona's tenant slug + email (see TenantUsers).
      */
     public function actingAsPersona(string $persona): static
     {
@@ -26,13 +24,7 @@ trait ActsAsPersona
             throw new InvalidArgumentException("Unknown demo persona [{$persona}].");
         }
 
-        $tenant = Tenant::query()->where('slug', $config['tenant'])->firstOrFail();
-        $user = User::query()->withoutGlobalScopes()
-            ->where('tenant_id', $tenant->id)
-            ->where('email', $config['email'])
-            ->firstOrFail();
-
-        return $this->actingAs($user);
+        return $this->actingAs(TenantUsers::find($config['tenant'], $config['email']));
     }
 }
 

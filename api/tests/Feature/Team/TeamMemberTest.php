@@ -1,17 +1,9 @@
 <?php
 
-use App\Models\Tenant;
-use App\Models\User;
 use Database\Seeders\DemoTenantsSeeder;
+use Tests\Support\TenantUsers;
 
 beforeEach(fn () => $this->seed(DemoTenantsSeeder::class));
-
-function acmeMember(string $email): User
-{
-    $acme = Tenant::query()->where('slug', 'acme')->firstOrFail();
-
-    return User::query()->withoutGlobalScopes()->where('tenant_id', $acme->id)->where('email', $email)->firstOrFail();
-}
 
 it('lists only own tenant members for an admin', function () {
     $this->actingAsPersona('acme-admin')->getJson('/api/team/members')
@@ -26,7 +18,7 @@ it('orders admins first, then everyone by name', function () {
 });
 
 it('shows each member as id, name, email, role and initials', function () {
-    $maya = acmeMember('maya@acmelogistics.com');
+    $maya = TenantUsers::find('acme', 'maya@acmelogistics.com');
 
     $this->actingAsPersona('acme-admin')->getJson('/api/team/members')
         ->assertOk()
@@ -46,7 +38,7 @@ it('shows the other tenant only its own members', function () {
 });
 
 it('shows one member of the own tenant', function () {
-    $jordan = acmeMember('jordan@acmelogistics.com');
+    $jordan = TenantUsers::find('acme', 'jordan@acmelogistics.com');
 
     $this->actingAsPersona('acme-admin')->getJson("/api/team/members/{$jordan->id}")
         ->assertOk()
@@ -56,7 +48,7 @@ it('shows one member of the own tenant', function () {
 });
 
 it('returns 404 for another tenant\'s member', function () {
-    $jordan = acmeMember('jordan@acmelogistics.com');
+    $jordan = TenantUsers::find('acme', 'jordan@acmelogistics.com');
 
     $this->actingAsPersona('globex-admin')->getJson("/api/team/members/{$jordan->id}")
         ->assertNotFound()
@@ -72,7 +64,7 @@ it('forbids non-admins', function () {
 });
 
 it('forbids a reviewer from showing a member, with the admin message', function () {
-    $maya = acmeMember('maya@acmelogistics.com');
+    $maya = TenantUsers::find('acme', 'maya@acmelogistics.com');
 
     $this->actingAsPersona('acme-reviewer')->getJson("/api/team/members/{$maya->id}")
         ->assertForbidden()

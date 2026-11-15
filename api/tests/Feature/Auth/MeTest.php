@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Route;
 
 beforeEach(function () {
     $this->withHeaders(['Origin' => 'http://localhost:8088', 'Referer' => 'http://localhost:8088/']);
+    // A test-only route that binds a tenant-owned model.
+    Route::middleware(['api', 'auth:sanctum'])->get('/api/_test/users/{user}', fn (User $user) => ['id' => $user->id]);
 });
 
 it('requires authentication for me', function () {
@@ -41,15 +43,9 @@ it('sets the current tenant from the authenticated user', function () {
     expect(app(CurrentTenant::class)->id())->toBe($user->tenant_id);
 });
 
-function registerTenantBoundRoute(): void
-{
-    Route::middleware(['api', 'auth:sanctum'])->get('/api/_test/users/{user}', fn (User $user) => ['id' => $user->id]);
-}
-
 // One request per test: the test app reuses the scoped CurrentTenant across requests,
 // so a second request would inherit the first one's tenant and hide an ordering bug.
 it('binds a same-tenant model before the controller runs', function () {
-    registerTenantBoundRoute();
     $mine = User::factory()->create();
     $colleague = app(CurrentTenant::class)->run($mine->tenant, fn () => User::factory()->create());
     app(CurrentTenant::class)->forget();
@@ -58,7 +54,6 @@ it('binds a same-tenant model before the controller runs', function () {
 });
 
 it('returns 404 with the error contract when binding another tenant\'s model', function () {
-    registerTenantBoundRoute();
     $mine = User::factory()->create();
     $stranger = User::factory()->create();
 
