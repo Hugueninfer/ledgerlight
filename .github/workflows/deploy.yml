@@ -97,12 +97,24 @@ jobs:
     runs-on: ubuntu-24.04
     permissions: {}
     steps:
+      # Fail closed: an empty fingerprint would silently disable SSH host-key verification.
+      - name: Require host key fingerprint and valid sha
+        env:
+          FP: ${{ secrets.DEPLOY_HOST_FINGERPRINT }}
+          SHA: ${{ needs.build.outputs.sha }}
+        run: |
+          test -n "$FP" || { echo "::error::DEPLOY_HOST_FINGERPRINT is required"; exit 1; }
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::build sha is not 40 hex chars"; exit 1; }
+
       - name: Deploy over SSH
         uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
+        env:
+          TAG: ${{ needs.build.outputs.sha }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           fingerprint: ${{ secrets.DEPLOY_HOST_FINGERPRINT }}
           script_stop: true
-          script: TAG=${{ needs.build.outputs.sha }} /opt/ledgerlight/scripts/deploy.sh
+          envs: TAG
+          script: TAG="$TAG" /opt/ledgerlight/scripts/deploy.sh

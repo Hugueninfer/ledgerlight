@@ -128,6 +128,8 @@ Get the host key fingerprint (run it on your machine, then confirm it against `s
 ssh-keyscan -t ed25519 <host> 2>/dev/null | ssh-keygen -lf - | awk '{print $2}'   # SHA256:...
 ```
 
+`DEPLOY_HOST_FINGERPRINT` is a hard prerequisite: the `deploy` job fails in its first step if the secret is empty, and never connects without verifying the host key.
+
 Then delete the local private key file. Until `DEPLOY_HOST` exists, the `deploy` job is skipped (shown as skipped, not failed), so the build keeps working without a VM.
 
 ## 7. First deploy and verification
